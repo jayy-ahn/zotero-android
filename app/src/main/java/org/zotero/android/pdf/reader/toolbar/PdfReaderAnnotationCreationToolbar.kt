@@ -7,13 +7,17 @@ import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
@@ -31,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.pspdfkit.ui.special_mode.controller.AnnotationTool
@@ -40,6 +45,7 @@ import org.zotero.android.pdf.data.PdfReaderTool
 import org.zotero.android.pdf.reader.DragAnchors
 import org.zotero.android.pdf.reader.PdfReaderVMInterface
 import org.zotero.android.pdf.reader.PdfReaderViewState
+import org.zotero.android.uicomponents.foundation.safeClickable
 import org.zotero.android.uicomponents.foundation.safeStringResource
 import org.zotero.android.uicomponents.Drawables
 import org.zotero.android.uicomponents.Strings
@@ -146,144 +152,216 @@ internal fun BoxScope.PdfReaderAnnotationCreationToolbar(
         )
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .offset {
-                IntOffset(
-                    x = state
-                        .requireOffset()
-                        .roundToInt(),
-                    y = 0,
+    val columnModifier = Modifier
+        .offset {
+            IntOffset(
+                x = state
+                    .requireOffset()
+                    .roundToInt(),
+                y = 0,
+            )
+        }
+        .anchoredDraggable(
+            state = state,
+            orientation = Orientation.Horizontal,
+            interactionSource = draggableInteractionSource
+        )
+
+    if (viewState.isToolbarMinimized) {
+        val activeToolForStub = vMInterface.activeAnnotationTool
+        Row(
+            modifier = Modifier
+                .then(columnModifier)
+                .widthIn(min = 48.dp, max = 144.dp)
+                .height(40.dp)
+                .padding(start = 16.dp, top = 16.dp)
+                .background(
+                    color = snapAreaBackgroundColor,
+                    shape = roundCornerShape
                 )
-            }
-            .anchoredDraggable(
-                state = state,
-                orientation = Orientation.Horizontal,
-                interactionSource = draggableInteractionSource
-            )
-            .height(520.dp)
-            .padding(start = 16.dp, top = 16.dp)
-            .background(
-                color = snapAreaBackgroundColor,
-                shape = roundCornerShape
-            )
-            .clip(roundCornerShape)
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(4.dp))
-            pdfReaderToolsList.forEach { tool ->
-                if (!tool.isHidden) {
-                    TooltipBox(
-                        positionProvider = rememberTooltipPositionProvider(
-                            TooltipAnchorPosition.Above,
-                            4.dp
-                        ),
-                        tooltip = {
-                            PlainTooltip() {
-                                Text(
-                                    text = safeStringResource(tool.title)
-                                )
-                            }
-                        },
-                        state = rememberTooltipState()
-                    ) {
-                        PdfReaderAnnotationCreationToggleButton(
-                            activeAnnotationTool = vMInterface.activeAnnotationTool,
-                            pdfReaderTool = tool,
-                            toggleButton = vMInterface::toggle
-                        )
-
-                    }
-
-                }
-            }
-            val activeAnnotationTool = vMInterface.activeAnnotationTool
-            if (viewState.isColorPickerButtonVisible && activeAnnotationTool != null) {
-                if (activeAnnotationTool == AnnotationTool.ERASER) {
+                .clip(roundCornerShape),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (activeToolForStub != null) {
+                if (activeToolForStub == AnnotationTool.ERASER) {
                     PdfReaderEmptyFilterCircle(onClick = vMInterface::showToolOptions)
                 } else {
-                    val color = vMInterface.toolColors[activeAnnotationTool]
+                    val color = vMInterface.toolColors[activeToolForStub]
                     if (color != null) {
                         PdfReaderFilledFilterCircle(hex = color, onClick = vMInterface::showToolOptions)
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            TooltipBox(
-                positionProvider = rememberTooltipPositionProvider(
-                    TooltipAnchorPosition.Above,
-                    4.dp
-                ),
-                tooltip = {
-                    PlainTooltip() {
-                        Text(
-                            safeStringResource(
-                                Strings.accessibility_pdf_undo
-                            )
-                        )
-                    }
-                },
-                state = rememberTooltipState()
-            ) {
                 PdfReaderAnnotationCreationButton(
                     isEnabled = vMInterface.canUndo(),
                     iconInt = Drawables.undo_24px,
                     onButtonClick = vMInterface::onUndoClick
                 )
             }
-            TooltipBox(
-                positionProvider = rememberTooltipPositionProvider(
-                    TooltipAnchorPosition.Above,
-                    4.dp
-                ),
-                tooltip = {
-                    PlainTooltip() {
-                        Text(
-                            safeStringResource(
-                                Strings.accessibility_pdf_redo
-                            )
-                        )
-                    }
-                },
-                state = rememberTooltipState()
-            ) {
-                PdfReaderAnnotationCreationButton(
-                    isEnabled = vMInterface.canRedo(),
-                    iconInt = Drawables.redo_24px,
-                    onButtonClick = vMInterface::onRedoClick
+            Icon(
+                painter = painterResource(id = Drawables.expand_more_24px),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .size(40.dp)
+                    .safeClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = vMInterface::expandToolbar,
+                        enabled = true
+                    )
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = columnModifier
+                .height(520.dp)
+                .padding(start = 16.dp, top = 16.dp)
+                .background(
+                    color = snapAreaBackgroundColor,
+                    shape = roundCornerShape
                 )
-            }
-
-            TooltipBox(
-                positionProvider = rememberTooltipPositionProvider(
-                    TooltipAnchorPosition.Above,
-                    4.dp
-                ),
-                tooltip = {
-                    PlainTooltip() {
-                        Text(
-                            safeStringResource(
-                                Strings.cancel
+                .clip(roundCornerShape)
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                pdfReaderToolsList.forEach { tool ->
+                    if (!tool.isHidden) {
+                        TooltipBox(
+                            positionProvider = rememberTooltipPositionProvider(
+                                TooltipAnchorPosition.Above,
+                                4.dp
+                            ),
+                            tooltip = {
+                                PlainTooltip() {
+                                    Text(
+                                        text = safeStringResource(tool.title)
+                                    )
+                                }
+                            },
+                            state = rememberTooltipState()
+                        ) {
+                            PdfReaderAnnotationCreationToggleButton(
+                                activeAnnotationTool = vMInterface.activeAnnotationTool,
+                                pdfReaderTool = tool,
+                                toggleButton = vMInterface::toggle
                             )
-                        )
+
+                        }
+
                     }
-                },
-                state = rememberTooltipState()
-            ) {
+                }
+                val activeAnnotationTool = vMInterface.activeAnnotationTool
+                if (viewState.isColorPickerButtonVisible && activeAnnotationTool != null) {
+                    if (activeAnnotationTool == AnnotationTool.ERASER) {
+                        PdfReaderEmptyFilterCircle(onClick = vMInterface::showToolOptions)
+                    } else {
+                        val color = vMInterface.toolColors[activeAnnotationTool]
+                        if (color != null) {
+                            PdfReaderFilledFilterCircle(hex = color, onClick = vMInterface::showToolOptions)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                TooltipBox(
+                    positionProvider = rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Above,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip() {
+                            Text(
+                                safeStringResource(
+                                    Strings.accessibility_pdf_undo
+                                )
+                            )
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    PdfReaderAnnotationCreationButton(
+                        isEnabled = vMInterface.canUndo(),
+                        iconInt = Drawables.undo_24px,
+                        onButtonClick = vMInterface::onUndoClick
+                    )
+                }
+                TooltipBox(
+                    positionProvider = rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Above,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip() {
+                            Text(
+                                safeStringResource(
+                                    Strings.accessibility_pdf_redo
+                                )
+                            )
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    PdfReaderAnnotationCreationButton(
+                        isEnabled = vMInterface.canRedo(),
+                        iconInt = Drawables.redo_24px,
+                        onButtonClick = vMInterface::onRedoClick
+                    )
+                }
+
+                TooltipBox(
+                    positionProvider = rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Above,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip() {
+                            Text(
+                                safeStringResource(
+                                    Strings.cancel
+                                )
+                            )
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    PdfReaderAnnotationCreationButton(
+                        isEnabled = true,
+                        iconInt = Drawables.cancel_24px,
+                        onButtonClick = vMInterface::onCloseClick
+                    )
+
+                }
+
+                TooltipBox(
+                    positionProvider = rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Above,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip() {
+                            Text(
+                                safeStringResource(
+                                    Strings.pdf_annotation_toolbar_minimize
+                                )
+                            )
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    PdfReaderAnnotationCreationButton(
+                        isEnabled = true,
+                        iconInt = Drawables.expand_less_24px,
+                        onButtonClick = vMInterface::minimizeToolbar
+                    )
+                }
+
                 PdfReaderAnnotationCreationButton(
                     isEnabled = true,
-                    iconInt = Drawables.cancel_24px,
-                    onButtonClick = vMInterface::onCloseClick
+                    iconInt = Drawables.drag_handle,
                 )
-
             }
-
-            PdfReaderAnnotationCreationButton(
-                isEnabled = true,
-                iconInt = Drawables.drag_handle,
-            )
         }
     }
 }

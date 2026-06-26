@@ -2614,12 +2614,28 @@ class PdfReaderViewModel @Inject constructor(
 
     fun toggleToolbarButton() {
         updateState {
-            copy(showCreationToolbar = !viewState.showCreationToolbar)
+            copy(
+                showCreationToolbar = !viewState.showCreationToolbar,
+                isToolbarMinimized = false
+            )
         }
         if (!viewState.showCreationToolbar) {
             pdfFragment.exitCurrentlyActiveMode()
         }
     }
+
+    override fun minimizeToolbar() {
+        updateState {
+            copy(isToolbarMinimized = true)
+        }
+    }
+
+    override fun expandToolbar() {
+        updateState {
+            copy(isToolbarMinimized = false)
+        }
+    }
+
     override fun toggle(tool: AnnotationTool) {
         val color = this.toolColors[tool]
         toggle(annotationTool = tool, color = color)
@@ -3674,6 +3690,7 @@ data class PdfReaderViewState(
     val filter: AnnotationsFilter? = null,
     val showSideBar: Boolean = false,
     val showCreationToolbar: Boolean = false,
+    val isToolbarMinimized: Boolean = false,
     val isColorPickerButtonVisible: Boolean = false,
     val commentFocusKey: String? = null,
     val commentFocusText: String = "",

@@ -1689,10 +1689,25 @@ class ReaderViewModel @Inject constructor(
 
     fun toggleToolbarButton() {
         updateState {
-            copy(showCreationToolbar = !viewState.showCreationToolbar)
+            copy(
+                showCreationToolbar = !viewState.showCreationToolbar,
+                isToolbarMinimized = false
+            )
         }
         val tool = viewState.activeTool ?: return
         toggle(tool)
+    }
+
+    fun minimizeToolbar() {
+        updateState {
+            copy(isToolbarMinimized = true)
+        }
+    }
+
+    fun expandToolbar() {
+        updateState {
+            copy(isToolbarMinimized = false)
+        }
     }
 
     fun annotation(key: String): NewReaderAnnotation? {
@@ -2422,6 +2437,7 @@ data class ReaderViewState(
     val showPdfSearch: Boolean = false,
     val showSideBar: Boolean = false,
     val showCreationToolbar: Boolean = false,
+    val isToolbarMinimized: Boolean = false,
     val commentFocusKey: String? = null,
     val commentFocusText: String = "",
     val sidebarSliderSelectedOption: ReaderSliderOptions = ReaderSliderOptions.Annotations,

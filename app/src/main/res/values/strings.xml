@@ -91,4 +91,6 @@
     <string name="pdf_settings_flow_mode_paginated">Paginated</string>
     <string name="pdf_settings_flow_mode_scrolled">Scrolled</string>
 
+    <string name="pdf_annotation_toolbar_minimize">Minimize</string>
+
 </resources>
