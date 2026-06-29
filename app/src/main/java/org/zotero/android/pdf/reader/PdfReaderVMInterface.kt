@@ -43,6 +43,7 @@ interface PdfReaderVMInterface {
     fun onCloseClick()
     fun minimizeToolbar()
     fun expandToolbar()
+    fun toggleToolFromStub()
     fun setSidebarSliderSelectedOption(optionOrdinal: Int)
     fun onOutlineSearch(text: String)
     fun onOutlineItemTapped(outline: Outline)

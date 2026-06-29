@@ -209,11 +209,12 @@ internal fun BoxScope.ReaderAnnotationCreationToolbar(
         )
 
     if (viewState.isToolbarMinimized) {
-        val activeToolForStub = viewState.activeTool
+        val lastTool = viewState.lastSelectedTool
+        val isActive = viewState.activeTool != null
         Row(
             modifier = Modifier
                 .then(columnModifier)
-                .widthIn(min = 48.dp, max = 96.dp)
+                .widthIn(min = 48.dp, max = 144.dp)
                 .height(40.dp)
                 .padding(start = animatedExtraLeftPadding, top = 16.dp)
                 .background(
@@ -223,11 +224,20 @@ internal fun BoxScope.ReaderAnnotationCreationToolbar(
                 .clip(roundCornerShape),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (activeToolForStub != null) {
-                val color = viewState.toolColors[activeToolForStub]
-                if (color != null) {
-                    ReaderFilterCircle(hex = color, onClick = viewModel::showToolOptions)
+            if (lastTool != null) {
+                if (isActive) {
+                    val color = viewState.toolColors[lastTool]
+                    if (color != null) {
+                        ReaderFilterCircle(hex = color, onClick = viewModel::showToolOptions)
+                    }
+                } else {
+                    ReaderFilterCircle(hex = "#888888", onClick = viewModel::showToolOptions)
                 }
+                ReaderAnnotationCreationButton(
+                    isEnabled = true,
+                    iconInt = if (isActive) Drawables.check_24px else Drawables.cancel_24px,
+                    onButtonClick = viewModel::toggleToolFromStub
+                )
             }
             Icon(
                 painter = painterResource(id = Drawables.expand_more_24px),

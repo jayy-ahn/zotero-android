@@ -972,6 +972,9 @@ class ReaderViewModel @Inject constructor(
             readerWebCallChainExecutor.clearTool()
             return
         }
+        updateState {
+            copy(lastSelectedTool = annotationTool)
+        }
         updateAnnotationToolDrawColorAndSize(annotationTool = annotationTool, colorHex = colorHex)
 
     }
@@ -1691,7 +1694,8 @@ class ReaderViewModel @Inject constructor(
         updateState {
             copy(
                 showCreationToolbar = !viewState.showCreationToolbar,
-                isToolbarMinimized = false
+                isToolbarMinimized = false,
+                lastSelectedTool = null
             )
         }
         val tool = viewState.activeTool ?: return
@@ -1707,6 +1711,15 @@ class ReaderViewModel @Inject constructor(
     fun expandToolbar() {
         updateState {
             copy(isToolbarMinimized = false)
+        }
+    }
+
+    fun toggleToolFromStub() {
+        val tool = viewState.lastSelectedTool ?: return
+        if (viewState.activeTool == tool) {
+            toggle(tool)
+        } else {
+            toggle(tool)
         }
     }
 
@@ -2451,6 +2464,7 @@ data class ReaderViewState(
     val readerColorPickerArgs: ReaderColorPickerArgs? = null,
     val readerFilterArgs: ReaderFilterArgs? = null,
     val toolColors: Map<ReaderAnnotationTool, String> = emptyMap(),
+    val lastSelectedTool: ReaderAnnotationTool? = null,
     val focusDocumentLocationAnnotationKey: String? = null,
     val annotationsBitmapCache: PersistentMap<String, Bitmap> = persistentMapOf(),
     val pageProgress: String? = null,

@@ -2616,7 +2616,8 @@ class PdfReaderViewModel @Inject constructor(
         updateState {
             copy(
                 showCreationToolbar = !viewState.showCreationToolbar,
-                isToolbarMinimized = false
+                isToolbarMinimized = false,
+                lastSelectedTool = null
             )
         }
         if (!viewState.showCreationToolbar) {
@@ -2634,6 +2635,11 @@ class PdfReaderViewModel @Inject constructor(
         updateState {
             copy(isToolbarMinimized = false)
         }
+    }
+
+    override fun toggleToolFromStub() {
+        val tool = viewState.lastSelectedTool ?: return
+        toggle(tool)
     }
 
     override fun toggle(tool: AnnotationTool) {
@@ -2654,6 +2660,10 @@ class PdfReaderViewModel @Inject constructor(
         if (pdfFragment.activeAnnotationTool == annotationTool) {
             pdfFragment.exitCurrentlyActiveMode()
             return
+        }
+
+        updateState {
+            copy(lastSelectedTool = annotationTool)
         }
 
 //        fragment.enterAnnotationCreationMode(annotationTool)
@@ -3691,6 +3701,7 @@ data class PdfReaderViewState(
     val showSideBar: Boolean = false,
     val showCreationToolbar: Boolean = false,
     val isToolbarMinimized: Boolean = false,
+    val lastSelectedTool: AnnotationTool? = null,
     val isColorPickerButtonVisible: Boolean = false,
     val commentFocusKey: String? = null,
     val commentFocusText: String = "",

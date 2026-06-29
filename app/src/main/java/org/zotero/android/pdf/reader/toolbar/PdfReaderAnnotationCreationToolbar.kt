@@ -168,11 +168,12 @@ internal fun BoxScope.PdfReaderAnnotationCreationToolbar(
         )
 
     if (viewState.isToolbarMinimized) {
-        val activeToolForStub = vMInterface.activeAnnotationTool
+        val lastTool = viewState.lastSelectedTool
+        val isActive = vMInterface.activeAnnotationTool != null
         Row(
             modifier = Modifier
                 .then(columnModifier)
-                .widthIn(min = 48.dp, max = 144.dp)
+                .widthIn(min = 48.dp, max = 192.dp)
                 .height(40.dp)
                 .padding(start = 16.dp, top = 16.dp)
                 .background(
@@ -182,19 +183,28 @@ internal fun BoxScope.PdfReaderAnnotationCreationToolbar(
                 .clip(roundCornerShape),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (activeToolForStub != null) {
-                if (activeToolForStub == AnnotationTool.ERASER) {
-                    PdfReaderEmptyFilterCircle(onClick = vMInterface::showToolOptions)
-                } else {
-                    val color = vMInterface.toolColors[activeToolForStub]
-                    if (color != null) {
-                        PdfReaderFilledFilterCircle(hex = color, onClick = vMInterface::showToolOptions)
+            if (lastTool != null) {
+                if (isActive) {
+                    if (lastTool == AnnotationTool.ERASER) {
+                        PdfReaderEmptyFilterCircle(onClick = vMInterface::showToolOptions)
+                    } else {
+                        val color = vMInterface.toolColors[lastTool]
+                        if (color != null) {
+                            PdfReaderFilledFilterCircle(hex = color, onClick = vMInterface::showToolOptions)
+                        }
                     }
+                } else {
+                    PdfReaderEmptyFilterCircle(onClick = vMInterface::showToolOptions)
                 }
                 PdfReaderAnnotationCreationButton(
-                    isEnabled = vMInterface.canUndo(),
+                    isEnabled = isActive && vMInterface.canUndo(),
                     iconInt = Drawables.undo_24px,
                     onButtonClick = vMInterface::onUndoClick
+                )
+                PdfReaderAnnotationCreationButton(
+                    isEnabled = true,
+                    iconInt = if (isActive) Drawables.check_24px else Drawables.cancel_24px,
+                    onButtonClick = vMInterface::toggleToolFromStub
                 )
             }
             Icon(
