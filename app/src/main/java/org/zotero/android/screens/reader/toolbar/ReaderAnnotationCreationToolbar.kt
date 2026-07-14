@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -32,8 +33,11 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -211,12 +215,30 @@ internal fun BoxScope.ReaderAnnotationCreationToolbar(
     if (viewState.isToolbarMinimized) {
         val lastTool = viewState.lastSelectedTool
         val isActive = viewState.activeTool != null
+        val isOnRight = state.targetValue == DragAnchors.End
+        var stubWidthPx by remember { mutableStateOf(0) }
+        val density = LocalDensity.current
         Row(
             modifier = Modifier
-                .then(columnModifier)
+                .offset {
+                    val baseX = state.requireOffset().roundToInt()
+                    val expectedWidthPx = with(density) { 80.dp.toPx() }.roundToInt()
+                    val adjustment = if (isOnRight && stubWidthPx > 0) expectedWidthPx - stubWidthPx else 0
+                    IntOffset(x = baseX + adjustment, y = 0)
+                }
+                .anchoredDraggable(
+                    state = state,
+                    orientation = Orientation.Horizontal,
+                    interactionSource = draggableInteractionSource
+                )
+                .onSizeChanged { stubWidthPx = it.width }
                 .widthIn(min = 48.dp, max = 144.dp)
                 .height(40.dp)
-                .padding(start = animatedExtraLeftPadding, top = 16.dp)
+                .padding(
+                    start = if (!isOnRight) animatedExtraLeftPadding else 0.dp,
+                    end = if (isOnRight) 16.dp else 0.dp,
+                    top = 16.dp
+                )
                 .background(
                     color = snapAreaBackgroundColor,
                     shape = roundCornerShape

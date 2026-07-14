@@ -3,6 +3,7 @@
 # Built application files
 *.apk
 *.ap_
+*.idsig
 app/debug
 app/release
 
@@ -46,6 +47,7 @@ captures/
 zotero.release.keystore
 keystore-secrets.txt
 pspdfkit-key.txt
+debug.keystore
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
@@ -79,3 +81,21 @@ app/src/main/assets/cslLocales/
 
 #reader generated files:
 app/src/main/assets/reader/
+
+# Crush
+.crush/
+
+# Agent context
+AGENTS.md
+
+# APK patching artifacts
+apk_decompiled/
+apk_patch_temp/
+patch_pspdfkit.sh
+patch_pspdfkit.bat
+
+# Debugging artifacts
+r2_*.txt
+
+# Windows artifacts
+nul

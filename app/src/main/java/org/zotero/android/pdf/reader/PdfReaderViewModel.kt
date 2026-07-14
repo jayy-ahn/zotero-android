@@ -1023,6 +1023,16 @@ class PdfReaderViewModel @Inject constructor(
                     return
                 }
 
+                // Shrink highlight rect heights by 10% (5% per side) to fix tall highlights
+                if (annotation is TextMarkupAnnotation) {
+                    val shrunkRects = annotation.rects.map { rect ->
+                        val height = rect.height()
+                        val shrink = height * 0.05f  // 5% per side = 10% total
+                        RectF(rect.left, rect.top + shrink, rect.right, rect.bottom - shrink)
+                    }
+                    annotation.setRects(shrunkRects)
+                }
+
                 processAnnotationObserving(annotation, emptyList(), PdfReaderNotification.PSPDFAnnotationsAdded)
             }
 
