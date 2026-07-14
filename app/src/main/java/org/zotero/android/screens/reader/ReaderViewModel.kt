@@ -8,10 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.RectF
-import android.net.Uri
 import android.webkit.WebView
 import androidx.compose.ui.text.TextStyle
-import androidx.core.net.toFile
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.google.gson.JsonArray
@@ -197,10 +195,15 @@ class ReaderViewModel @Inject constructor(
     var sidebarEditingEnabled: Boolean = false
 
 
-
     val screenArgs: ReaderArgs by lazy {
         val argsEncoded = stateHandle.get<String>(ARG_READER_SCREEN).require()
         navigationParamsMarshaller.decodeObjectFromBase64(argsEncoded)
+    }
+
+    private val screenFileArgs: File by lazy {
+        val filePathString = stateHandle.get<String>(ARG_READER_SCREEN_ENCODED_FILE_PATH_ARG).require()
+        val file = File(filePathString)
+        file
     }
 
     private var readerSearchTermCancellable: Job? = null
@@ -358,8 +361,7 @@ class ReaderViewModel @Inject constructor(
         textFont: TextStyle,
     ) = initOnce {
         this.textFont = textFont
-        val uri = screenArgs.uri
-        initFileUris(uri)
+        initFileUris()
         copyReaderFiles()
         this.isTablet = isTablet
 
@@ -395,6 +397,12 @@ class ReaderViewModel @Inject constructor(
         }
         this.userId = sessionDataEventStream.currentValue()!!.userId
         this.username = defaults.getUsername()
+
+        updatePdfPageAppearanceMode(defaults.getReaderSettings())
+        updateState {
+            copy(isDark = pdfReaderCurrentThemeEventStream.currentValue()!!.isDark)
+        }
+
     }
 
     fun initEveryTime(webView: WebView) {
@@ -431,8 +439,8 @@ class ReaderViewModel @Inject constructor(
     }
 
 
-    private fun initFileUris(uri: Uri) {
-        this.originalFile = uri.toFile()
+    private fun initFileUris() {
+        this.originalFile = screenFileArgs
         this.readerDirectory = fileStore.runningReaderDirectory()
         this.documentFile = fileStore.runningReaderUserFileSubDirectory(originalFile.extension)
         this.readerFile = File(readerDirectory, "view.html")
@@ -1356,7 +1364,10 @@ class ReaderViewModel @Inject constructor(
                     page = page,
                     selectedAnnotationKey = viewState.selectedAnnotationKey
                 )
-                readerWebCallChainExecutor.loadDocument(documentData)
+                readerWebCallChainExecutor.loadDocument(
+                    data = documentData,
+                    isDark = pdfReaderCurrentThemeEventStream.currentValue()!!.isDark
+                )
                 restoreWebViewState()
             } else {
                 var shouldIgnoreUpdate = false
@@ -1515,6 +1526,21 @@ class ReaderViewModel @Inject constructor(
                 decideTopBarAndBottomBarVisibility()
             }
 
+            ReaderWebData.onViewContentInitialized -> {
+                val tool = viewState.activeTool
+                val color = tool?.let { viewState.toolColors[it] }
+                if (tool != null && color != null) {
+                    updateAnnotationToolDrawColorAndSize(annotationTool = tool, colorHex = color)
+                }
+                if (!savedSearchTerm.isEmpty()) {
+                    readerWebCallChainExecutor.search(savedSearchTerm)
+                }
+
+                updateState {
+                    copy(isReaderLoading = false)
+                }
+            }
+
             else -> {
                 //no-op
             }
@@ -1634,22 +1660,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     suspend fun restoreWebViewState() {
-//        if (viewState.selectedAnnotationKey != null) {
-//            selectInDocument(viewState.selectedAnnotationKey!!)
-//        focusDocumentLocation = location,
-//        }
-
-        val tool = viewState.activeTool
-        val color = tool?.let { viewState.toolColors[it] }
-        if (tool != null && color != null) {
-            updateAnnotationToolDrawColorAndSize(annotationTool = tool, colorHex = color)
-        }
-        if (!savedSearchTerm.isEmpty()) {
-            delay(400)
-            readerWebCallChainExecutor.search(savedSearchTerm)
-        }
-        delay(400)
-        updateAppearanceAccordingToSettings()
+        updateAppearanceAccordingToSettings(false)
     }
 
 
@@ -2316,31 +2327,42 @@ class ReaderViewModel @Inject constructor(
 
     private fun update(readerSettings: ReaderSettings) {
         defaults.setReaderSettings(readerSettings)
-        updateAppearanceAccordingToSettings()
+        updatePdfPageAppearanceMode(readerSettings)
+        updateAppearanceAccordingToSettings(true)
     }
 
-    private fun updateAppearanceAccordingToSettings() {
+    private fun updateAppearanceAccordingToSettings(isSettingsUpdate: Boolean) {
         viewModelScope.launch {
             val readerSettings = defaults.getReaderSettings()
-            val oldPageAppearanceMode = when (readerSettings.appearanceMode) {
-                PageAppearanceMode.LIGHT -> {
-                    org.zotero.android.pdf.data.PageAppearanceMode.LIGHT
+            if (isSettingsUpdate) {
+                readerWebCallChainExecutor.updateInterface(pdfReaderCurrentThemeEventStream.currentValue()!!.isDark)
+                if (viewState.fileType == ReaderFileType.PDF || viewState.fileType == ReaderFileType.EPUB) {
+                    readerWebCallChainExecutor.setSpreadMode(readerSettings.spreadsMode)
                 }
-
-                PageAppearanceMode.DARK -> {
-                    org.zotero.android.pdf.data.PageAppearanceMode.DARK
-                }
-
-                PageAppearanceMode.AUTOMATIC -> {
-                    org.zotero.android.pdf.data.PageAppearanceMode.AUTOMATIC
+                if (viewState.fileType == ReaderFileType.EPUB) {
+                    readerWebCallChainExecutor.setFlowMode(readerSettings.pageLayoutFlowMode)
                 }
             }
 
-            pdfReaderThemeDecider.setPdfPageAppearanceMode(oldPageAppearanceMode)
-            readerWebCallChainExecutor.updateInterface(pdfReaderCurrentThemeEventStream.currentValue()!!.isDark)
-            readerWebCallChainExecutor.setFlowMode(readerSettings.pageLayoutFlowMode)
-            readerWebCallChainExecutor.setSpreadMode(readerSettings.spreadsMode)
         }
+    }
+
+    private fun updatePdfPageAppearanceMode(readerSettings: ReaderSettings) {
+        val oldPageAppearanceMode = when (readerSettings.appearanceMode) {
+            PageAppearanceMode.LIGHT -> {
+                org.zotero.android.pdf.data.PageAppearanceMode.LIGHT
+            }
+
+            PageAppearanceMode.DARK -> {
+                org.zotero.android.pdf.data.PageAppearanceMode.DARK
+            }
+
+            PageAppearanceMode.AUTOMATIC -> {
+                org.zotero.android.pdf.data.PageAppearanceMode.AUTOMATIC
+            }
+        }
+
+        pdfReaderThemeDecider.setPdfPageAppearanceMode(oldPageAppearanceMode)
     }
 
     private fun showUrl(url: String) {
@@ -2469,6 +2491,7 @@ data class ReaderViewState(
     val annotationsBitmapCache: PersistentMap<String, Bitmap> = persistentMapOf(),
     val pageProgress: String? = null,
     val fileType: ReaderFileType = ReaderFileType.EPUB,
+    val isReaderLoading: Boolean = true,
     ) : ViewState {
     fun isAnnotationSelected(annotationKey: String): Boolean {
         return this.selectedAnnotationKey == annotationKey
